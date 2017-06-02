@@ -1,8 +1,11 @@
-import nltk
-from nltk import word_tokenize
+# import nltk
+# from nltk import word_tokenize
+from nltk.tokenize import TweetTokenizer
 from nltk.util import ngrams
 from collections import Counter
 import MySQLdb
+
+tknzr = TweetTokenizer(strip_handles=True, reduce_len=True)
 
 def connect_db():
     db = MySQLdb.Connect(
@@ -14,7 +17,9 @@ def connect_db():
     return db
 
 def train_markov(text):
-    tokens = word_tokenize(text)
+    global tknzr
+    text = text.lower()
+    tokens = tknzr.tokenize(text)
     bigrams = ngrams(tokens, 2)
     counts = Counter(bigrams)
     data = [(key[0], key[1], counts[key], counts[key])
@@ -34,7 +39,9 @@ def train_markov(text):
     db.close()
 
 def score_text(text):
-    tokens = word_tokenize(text)
+    global tknzr
+    text = text.lower()
+    tokens = tknzr.tokenize(text)
     bigrams = ngrams(tokens, 2)
     scores = [score_bigram(bigram)
               for bigram in bigrams]
