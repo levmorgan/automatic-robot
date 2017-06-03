@@ -1,8 +1,10 @@
-import tweepy
 from time import sleep
 
+import tweepy
+
 import markov
-from db import connect_db
+from db import connect_db, get_cfg
+
 # import nltk
 # from nltk import word_tokenize
 
@@ -11,15 +13,6 @@ def get_api():
     auth = tweepy.OAuthHandler(cfg['consumer_key'], cfg['consumer_secret'])
     auth.set_access_token(cfg['access_token'], cfg['access_token_secret'])
     return tweepy.API(auth)
-
-def get_cfg():
-    cfg = {
-        "consumer_key"        : "ESQKkz6AJhuUMkRwu3HQK7CZ2",
-        "consumer_secret"     : "Kg66kJ3oS2oVKAZCwQz8pf4DzLZT5JEFdP175GEmmplNwewdXj",
-        "access_token"        : "799711173738254336-814wQlIdMAhYJJecrD7hI9nTic2Paps",
-        "access_token_secret" : "DPY0iSrx8uiCBkTCE99cefO3DtjjclGMFNtqMCn9oDKLV"
-    }
-    return cfg
 
 def get_ascii(s):
     return ''.join([c for c in s if ord(c) < 128])
