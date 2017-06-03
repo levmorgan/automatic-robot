@@ -33,7 +33,9 @@ class BigramListener(tweepy.StreamListener):
         # print(word_tokenize(text.lower()))
         # print(text)
 
-        if is_ascii(text):
+        ascii_chars = get_ascii(text)
+        if len(ascii_chars) > (len(text)/2):
+            text = ascii_chars
             print(text)
             db = markov.connect_db()
             cur = db.cursor()
@@ -43,7 +45,7 @@ class BigramListener(tweepy.StreamListener):
             db.close()
             markov.train_markov(text)
 
-if __name__ == False: #'__main__':
+if __name__ == '__main__':
     api = get_api()
 
     bigramListener = BigramListener()
@@ -52,7 +54,7 @@ if __name__ == False: #'__main__':
     # stream.filter(locations=(-122.75,36.8,-121.75,37.8), async = True)
     # stream.filter(locations=(-165.,30.,-70.,70.), async = True)
     print("Sleeping an hour!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    sleep(60*60*6)
+    sleep(60*60*4)
     stream.disconnect()
     print("Stream off!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
