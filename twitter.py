@@ -2,6 +2,7 @@ import tweepy
 from time import sleep
 
 import markov
+from db import connect_db
 # import nltk
 # from nltk import word_tokenize
 

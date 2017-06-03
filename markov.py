@@ -4,18 +4,10 @@ from nltk.tokenize import TweetTokenizer
 from nltk.util import ngrams
 from collections import Counter
 from decimal import Decimal
-import MySQLdb
+
+from db import connect_db
 
 tknzr = TweetTokenizer(strip_handles=True, reduce_len=True)
-
-def connect_db():
-    db = MySQLdb.Connect(
-            host = "localhost",
-            user = "pi",
-            passwd = "s0sw00d!",
-            db = "twitter"
-    )
-    return db
 
 def train_markov(text):
     global tknzr
@@ -74,7 +66,7 @@ def score_bigram(bigram):
     cur = db.cursor()
     try:
         res = cur.execute(
-            'SELECT SUM(times_seen) FROM transitions WHERE first_word = %s', bigram[0])
+            'SELECT SUM(times_seen) FROM transitions WHERE first_word = %s', (bigram[0], ))
         total_count = cur.fetchall()[0][0]
         res = cur.execute(
             'SELECT times_seen FROM transitions WHERE first_word = %s AND second_word = %s', bigram)
