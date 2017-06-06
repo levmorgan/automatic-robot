@@ -134,7 +134,6 @@ class Scorer(object):
                 print("Bad row: "+str(row))
         return good_rows
 
-
     def load_first_word_counts(self):
         db = self.db
         cur = db.cursor()
