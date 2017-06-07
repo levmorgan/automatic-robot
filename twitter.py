@@ -4,6 +4,7 @@ import tweepy
 
 import markov
 from db import connect_db, get_cfg
+
 # import nltk
 # from nltk import word_tokenize
 
