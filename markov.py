@@ -1,9 +1,11 @@
 print("Loading markov.py")
 from collections import Counter
 from decimal import Decimal
+import re
 
 from nltk.tokenize import TweetTokenizer
 from nltk.util import ngrams
+from MySQLdb import DataError
 
 from hidden_utils import connect_db
 
@@ -16,26 +18,44 @@ print("markov.py loaded")
 tknzr = TweetTokenizer(strip_handles=True, reduce_len=True)
 db = connect_db()
 
+def train_db():
+    global db
+    cur = db.cursor()
+    cur.execute('SELECT message FROM messages;')
+    rows = cur.fetchall()
+    [train_markov(row[0]) for row in rows]
+
 def train_markov(text):
     global db
     global tknzr
-    text = text.lower()
-    tokens = tknzr.tokenize(text)
-    bigrams = ngrams(tokens, 2)
+    bigrams = get_bigrams(text)
     counts = Counter(bigrams)
     data = [(key[0], key[1], counts[key], counts[key])
             for key in counts.keys()]
 
     cur = db.cursor()
-    cur.executemany(
-        """
-        INSERT INTO transitions (first_word, second_word, times_seen)
-        VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE times_seen=times_seen+%s;
-        """,
-        data
-    )
-    db.commit()
+    try:
+        cur.executemany(
+            """
+            INSERT INTO transitions_1 (first_word, second_word, times_seen)
+            VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE times_seen=times_seen+%s;
+            """,
+            data
+        )
+        db.commit()
+    except DataError as e:
+        print(e)
     cur.close()
+
+def get_bigrams(text):
+    text = text.lower()
+    tokens = ( token for token in tknzr.tokenize(text)
+              if token_ok(token) )
+    bigrams = ngrams(tokens, 2)
+    return bigrams
+
+def token_ok(token):
+    return (len(token) > 1) or (re.match("\w", token))
 
 def score_db():
     global db
