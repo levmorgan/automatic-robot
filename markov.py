@@ -1,4 +1,5 @@
 print("Loading markov.py")
+import re
 from collections import Counter
 from decimal import Decimal
 
@@ -16,6 +17,13 @@ print("markov.py loaded")
 tknzr = TweetTokenizer(strip_handles=True, reduce_len=True)
 db = connect_db()
 
+def train_db():
+    global db
+    cur = db.cursor()
+    cur.execute("SELECT message FROM messages;")
+    messages = cur.fetchall()
+    [train_markov(message) for message in messages]
+
 def train_markov(text):
     global db
     global tknzr
@@ -29,7 +37,7 @@ def train_markov(text):
     cur = db.cursor()
     cur.executemany(
         """
-        INSERT INTO transitions (first_word, second_word, times_seen)
+        INSERT INTO transitions_1 (first_word, second_word, times_seen)
         VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE times_seen=times_seen+%s;
         """,
         data
@@ -59,7 +67,7 @@ def score_db():
 
     print(datetime.now().time())
     print("Writing scores...")
-    cur.executemany("UPDATE messages SET score = %s WHERE message = %s;", scores_and_text)
+    cur.executemany("UPDATE messages SET score_1 = %s WHERE message = %s;", scores_and_text)
 
     print(datetime.now().time())
     print("Scores written")
@@ -119,7 +127,7 @@ class Scorer(object):
     def load_bigram_counts(self):
         db = self.db
         cur = db.cursor()
-        res = cur.execute("SELECT first_word, second_word, times_seen FROM transitions;")
+        res = cur.execute("SELECT first_word, second_word, times_seen FROM transitions_1;")
         rows = self.filter_rows(cur.fetchall(), 3)
         count_dict = {(row[0], row[1]): row[2] for row in rows if len(row) == 3}
         cur.close()
@@ -138,7 +146,7 @@ class Scorer(object):
         db = self.db
         cur = db.cursor()
         res = cur.execute(
-            'SELECT first_word, SUM(times_seen) FROM transitions GROUP BY first_word;')
+            'SELECT first_word, SUM(times_seen) FROM transitions_1 GROUP BY first_word;')
         rows = self.filter_rows(cur.fetchall(), 2)
         count_dict = {row[0]: row[1] for row in rows}
         cur.close()
