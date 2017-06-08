@@ -6,7 +6,6 @@ import re
 
 from nltk.tokenize import TweetTokenizer
 from nltk.util import ngrams
-from MySQLdb import DataError
 
 from hidden_utils import connect_db
 
@@ -44,7 +43,7 @@ def train_markov(text):
             data
         )
         db.commit()
-    except DataError as e:
+    except Exception as e:
         print(e)
     cur.close()
 
