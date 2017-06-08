@@ -9,7 +9,7 @@ from MySQLdb import DataError
 
 from hidden_utils import connect_db
 
-from utils import memoize
+from utils import log2
 from datetime import datetime
 
 
@@ -92,14 +92,13 @@ class Scorer(object):
     def __init__(self, db):
         self.db = db
         self.bigram_counts = self.load_bigram_counts()
+        self.total_bigram_count = sum(self.bigram_counts.values())
         self.first_word_counts = self.load_first_word_counts()
+        self.max_counts = self.load_max_counts()
         self.tknzr = TweetTokenizer(strip_handles=True, reduce_len=True)
 
     def score_text(self, text):
-        tknzr = self.tknzr
-        text = text.lower()
-        tokens = tknzr.tokenize(text)
-        bigrams = ngrams(tokens, 2)
+        bigrams = get_bigrams(text)
         bigrams = list(bigrams)
         scores = [self.score_bigram(bigram)
                   for bigram in bigrams]
@@ -111,16 +110,33 @@ class Scorer(object):
             return score/Decimal(len(bigrams)+1)
 
     def score_bigram(self, bigram):
-        db = self.db
-        cur = db.cursor()
         try:
             total_count = self.get_first_word_count(bigram[0])
             bigram_count = self.get_bigram_count(bigram)
         except IndexError as e:
             return 0
-
-        cur.close()
         return(1 - (bigram_count/total_count))
+
+    def score_text_ranked(self, text):
+        bigrams = get_bigrams(text)
+        bigrams = list(bigrams)
+        scores = [self.score_bigram_ranked(bigram)
+                  for bigram in bigrams]
+        score = Decimal(sum(scores))
+
+        return score/Decimal(len(bigrams))
+
+    def score_bigram_ranked(self, bigram):
+        print bigram
+        max_count = Decimal(self.get_max_count(bigram[0]))
+        print "max_count", max_count
+        try:
+            bigram_count = Decimal(self.get_bigram_count(bigram))
+            print "bigram_count", bigram_count
+        except IndexError as e:
+            print "No bigram count"
+            return 1 - (Decimal(1)/max_count)
+        return 1 - (bigram_count/max_count)
 
     def get_first_word_count(self, first_word):
         try:
@@ -136,10 +152,14 @@ class Scorer(object):
         except KeyError:
             return 1
 
+    def get_max_count(self, first_word):
+        return self.max_counts[first_word]
+
+
     def load_bigram_counts(self):
         db = self.db
         cur = db.cursor()
-        res = cur.execute("SELECT first_word, second_word, times_seen FROM transitions;")
+        res = cur.execute("SELECT first_word, second_word, times_seen FROM transitions_1;")
         rows = self.filter_rows(cur.fetchall(), 3)
         count_dict = {(row[0], row[1]): row[2] for row in rows if len(row) == 3}
         cur.close()
@@ -158,7 +178,17 @@ class Scorer(object):
         db = self.db
         cur = db.cursor()
         res = cur.execute(
-            'SELECT first_word, SUM(times_seen) FROM transitions GROUP BY first_word;')
+            'SELECT first_word, SUM(times_seen) FROM transitions_1 GROUP BY first_word;')
+        rows = self.filter_rows(cur.fetchall(), 2)
+        count_dict = {row[0]: row[1] for row in rows}
+        cur.close()
+        return count_dict
+
+    def load_max_counts(self):
+        db = self.db
+        cur = db.cursor()
+        res = cur.execute(
+            'SELECT first_word, MAX(times_seen) FROM transitions_1 GROUP BY first_word;')
         rows = self.filter_rows(cur.fetchall(), 2)
         count_dict = {row[0]: row[1] for row in rows}
         cur.close()
