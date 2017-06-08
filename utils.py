@@ -1,3 +1,6 @@
+from decimal import Decimal
+from math import log
+
 def memoize(f):
     """ Memoization decorator for functions taking one or more arguments. """
     class memodict(dict):
@@ -28,3 +31,6 @@ def memoize_1(f):
             ret = self[key[0]] = self.f(*key)
             return ret
     return memodict(f)
+
+def log2(x):
+    return Decimal(log(Decimal(x))/log(Decimal(2)))

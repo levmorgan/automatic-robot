@@ -9,7 +9,7 @@ from nltk.util import ngrams
 
 from hidden_utils import connect_db
 
-from utils import memoize
+from utils import log2
 from datetime import datetime
 
 
@@ -72,7 +72,7 @@ def score_db():
     print(datetime.now().time())
     print("Scoring messages...")
     scorer = Scorer(db)
-    scores_and_text = [(scorer.score_text(row[0]), row[0]) for row in rows]
+    scores_and_text = [(scorer.score_text_ranked(row[0]), row[0]) for row in rows]
 
     print(datetime.now().time())
     print("Messages scored")
@@ -92,11 +92,12 @@ class Scorer(object):
     def __init__(self, db):
         self.db = db
         self.bigram_counts = self.load_bigram_counts()
+        self.total_bigram_count = sum(self.bigram_counts.values())
         self.first_word_counts = self.load_first_word_counts()
+        self.max_counts = self.load_max_counts()
         self.tknzr = TweetTokenizer(strip_handles=True, reduce_len=True)
 
     def score_text(self, text):
-        tknzr = self.tknzr
         bigrams = get_bigrams(text)
         bigrams = list(bigrams)
         scores = [self.score_bigram(bigram)
@@ -109,16 +110,34 @@ class Scorer(object):
             return score/Decimal(len(bigrams)+1)
 
     def score_bigram(self, bigram):
-        db = self.db
-        cur = db.cursor()
         try:
             total_count = self.get_first_word_count(bigram[0])
             bigram_count = self.get_bigram_count(bigram)
         except IndexError as e:
             return 0
-
-        cur.close()
         return(1 - (bigram_count/total_count))
+
+    def score_text_ranked(self, text):
+        bigrams = get_bigrams(text)
+        bigrams = list(bigrams)
+        if len(bigrams) < 4:
+            return 0
+        scores = [self.score_bigram_ranked(bigram)
+                  for bigram in bigrams]
+        score = Decimal(sum(scores))
+
+        return score/Decimal(len(bigrams))
+
+    def score_bigram_ranked(self, bigram):
+        try:
+            max_count = Decimal(self.get_max_count(bigram[0]))
+        except KeyError:
+            return 0
+        try:
+            bigram_count = Decimal(self.get_bigram_count(bigram))
+        except IndexError as e:
+            return 1 - (Decimal(1)/max_count)
+        return 1 - (bigram_count/max_count)
 
     def get_first_word_count(self, first_word):
         try:
@@ -133,6 +152,10 @@ class Scorer(object):
         # TODO: Figure out why this happens
         except KeyError:
             return 1
+
+    def get_max_count(self, first_word):
+        return self.max_counts[first_word]
+
 
     def load_bigram_counts(self):
         db = self.db
@@ -157,6 +180,16 @@ class Scorer(object):
         cur = db.cursor()
         res = cur.execute(
             'SELECT first_word, SUM(times_seen) FROM transitions_1 GROUP BY first_word;')
+        rows = self.filter_rows(cur.fetchall(), 2)
+        count_dict = {row[0]: row[1] for row in rows}
+        cur.close()
+        return count_dict
+
+    def load_max_counts(self):
+        db = self.db
+        cur = db.cursor()
+        res = cur.execute(
+            'SELECT first_word, MAX(times_seen) FROM transitions_1 GROUP BY first_word;')
         rows = self.filter_rows(cur.fetchall(), 2)
         count_dict = {row[0]: row[1] for row in rows}
         cur.close()

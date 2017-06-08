@@ -1,9 +1,9 @@
 from time import sleep
-
 import tweepy
+from MySQLdb import DataError
 
 import markov
-from db import connect_db, get_cfg
+from hidden_utils import connect_db, get_cfg
 
 # import nltk
 # from nltk import word_tokenize
@@ -31,13 +31,16 @@ class BigramListener(tweepy.StreamListener):
         if len(ascii_chars) > (len(text)/2):
             text = ascii_chars
             print(text)
-            db = markov.connect_db()
-            cur = db.cursor()
-            cur.execute("INSERT INTO messages (message) VALUES (%s);", (text,))
-            db.commit()
+            db = connect_db()
+            try:
+                cur = db.cursor()
+                cur.execute("INSERT INTO messages (message) VALUES (%s);", (text,))
+                db.commit()
+                markov.train_markov(text)
+            except DataError:
+                print "Couldn't handle "+ascii_chars
             cur.close()
             db.close()
-            markov.train_markov(text)
 
 if __name__ == '__main__':
     api = get_api()
@@ -47,8 +50,8 @@ if __name__ == '__main__':
     stream.filter(locations=(-122.75,36.8,-121.75,37.8,-74,40,-73,41), async = True)
     # stream.filter(locations=(-122.75,36.8,-121.75,37.8), async = True)
     # stream.filter(locations=(-165.,30.,-70.,70.), async = True)
-    print("Sleeping an hour!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    sleep(60*60*4)
+    hours = 12
+    print("Sleeping "+str(hours)+" hours!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    sleep(60*60*12)
     stream.disconnect()
     print("Stream off!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-
