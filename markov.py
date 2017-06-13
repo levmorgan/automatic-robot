@@ -25,8 +25,7 @@ def train_db():
     rows = cur.fetchall()
     [train_markov(row[0]) for row in rows]
 
-def train_markov(text):
-    global db
+def train_markov(text, db):
     global tknzr
     bigrams = get_bigrams(text)
     counts = Counter(bigrams)
@@ -35,16 +34,17 @@ def train_markov(text):
 
     cur = db.cursor()
     try:
-        cur.executemany(
-            """
-            INSERT INTO transitions_1 (first_word, second_word, times_seen)
-            VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE times_seen=times_seen+%s;
-            """,
-            data
-        )
-        db.commit()
+        for row in data:
+            cur.execute(
+                """
+                INSERT INTO transitions_1 (first_word, second_word, times_seen)
+                VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE times_seen=times_seen+%s;
+                """,
+                row
+            )
     except Exception as e:
         print(e)
+    db.commit()
     cur.close()
 
 def get_bigrams(text):
@@ -72,14 +72,14 @@ def score_db():
     print(datetime.now().time())
     print("Scoring messages...")
     scorer = Scorer(db)
-    scores_and_text = [(scorer.score_text_ranked(row[0]), row[0]) for row in rows]
+    scores_and_text = [(scorer.score_text(row[0]), row[0]) for row in rows]
 
     print(datetime.now().time())
     print("Messages scored")
 
     print(datetime.now().time())
     print("Writing scores...")
-    cur.executemany("UPDATE messages SET score_1 = %s WHERE message = %s;", scores_and_text)
+    cur.executemany("UPDATE messages SET score = %s WHERE message = %s;", scores_and_text)
 
     print(datetime.now().time())
     print("Scores written")
