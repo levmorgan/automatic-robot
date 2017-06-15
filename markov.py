@@ -1,16 +1,16 @@
 print("Loading markov.py")
-import re
 from collections import Counter
 from decimal import Decimal
 import re
+from utils import log2
+from datetime import datetime
+from zlib import compress
 
 from nltk.tokenize import TweetTokenizer
 from nltk.util import ngrams
 
 from hidden_utils import connect_db
 
-from utils import log2
-from datetime import datetime
 
 
 print(datetime.now().time())
@@ -117,27 +117,13 @@ class Scorer(object):
             return 0
         return(1 - (bigram_count/total_count))
 
-    def score_text_ranked(self, text):
-        bigrams = get_bigrams(text)
-        bigrams = list(bigrams)
-        if len(bigrams) < 4:
-            return 0
-        scores = [self.score_bigram_ranked(bigram)
-                  for bigram in bigrams]
-        score = Decimal(sum(scores))
+    def score_text_kolm(self, text):
+        reg_score = self.score_text(text)
+        c = compress(text)
+        score_kolm = Decimal(len(c))/Decimal(len(text))
+        score_kolm = min(score_kolm, Decimal(1))
 
-        return score/Decimal(len(bigrams))
-
-    def score_bigram_ranked(self, bigram):
-        try:
-            max_count = Decimal(self.get_max_count(bigram[0]))
-        except KeyError:
-            return 0
-        try:
-            bigram_count = Decimal(self.get_bigram_count(bigram))
-        except IndexError as e:
-            return 1 - (Decimal(1)/max_count)
-        return 1 - (bigram_count/max_count)
+        return (reg_score+score_kolm)/Decimal(2)
 
     def get_first_word_count(self, first_word):
         try:
