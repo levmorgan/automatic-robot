@@ -100,6 +100,7 @@ if __name__ == '__main__':
             if (counter % 1000) == 0:
                 print(datetime.now().time())
                 print("Processed %i tweets!"%(counter))
+                print("%i tweets in the queue"%(bigramListener.q.qsize()))
         except Empty:
             break
         except Exception as e:
